@@ -6,83 +6,202 @@ import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam;
 
+import android.app.Dialog;
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.os.Bundle;
 import android.util.AttributeSet;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.app.AndroidAppHelper;
 import android.view.ViewGroup;
+import android.widget.SeekBar;
+import android.widget.TextView;
 
 
 public class hook implements IXposedHookLoadPackage {
-    private static int MarginStart = 18;
-    private static int MarginEnd = 18;
+    private static SharedPreferences sharedPreferences;
+
+    private static int margin = 12;
+
+    private ImageView mOperationBtn;//播放列表
+    private ImageView mPlayBtn;//播放/暂停按钮
+    //private ViewGroup mMiniPlayBarInfoLayout;//底部播放条
+
+    private ImageView mAlbumView;//专辑封面iv
+    private View mMusicNameView;//歌名tv
+    private View mArtistNameView;//歌词tv
+
+    private View mAlbumScrollView;//专辑封面iv
+    private View mMusicNameScrollView;//歌名tv
+    private View mArtistNameScrollView;//歌词tv
+
+    private static SharedPreferences getSharedPreferences() {
+        if (sharedPreferences == null) {
+            sharedPreferences = AndroidAppHelper.currentApplication().getSharedPreferences("setting", Context.MODE_PRIVATE);
+        }
+        return sharedPreferences;
+    }
+
+    private void changeView() {
+        if (mOperationBtn != null) {
+            ((RelativeLayout.LayoutParams) mOperationBtn.getLayoutParams()).setMarginEnd(dip2px(margin));
+        }
+        if (mPlayBtn != null) {
+            RelativeLayout.LayoutParams new_lp = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, dip2px(49));
+            new_lp.addRule(RelativeLayout.LEFT_OF, mOperationBtn.getId());
+            mPlayBtn.setLayoutParams(new_lp);
+        }
+////
+        if (mAlbumView != null) {
+            if (mAlbumView.getParent() != null) {
+                mAlbumView.setX(dip2px(margin));
+            } else {
+                mAlbumView.setX(mMusicNameView.getX() + dip2px(margin) - mAlbumView.getWidth());
+            }
+        }
+        if (mMusicNameView != null) {
+            mMusicNameView.setPadding(dip2px(margin), 0, 0, 0);
+        }
+        if (mArtistNameView != null) {
+            mArtistNameView.setPadding(dip2px(margin), 0, 0, 0);
+        }
+////
+        if (mAlbumScrollView != null) {
+            if (mAlbumScrollView.getParent() != null) {
+                mAlbumScrollView.setX(dip2px(margin));
+            } else {
+                mAlbumScrollView.setX(mMusicNameScrollView.getX() + dip2px(margin) - mAlbumScrollView.getWidth());
+            }
+        }
+        if (mMusicNameScrollView != null) {
+            mMusicNameScrollView.setPadding(dip2px(margin), 0, 0, 0);
+        }
+        if (mArtistNameScrollView != null) {
+            mArtistNameScrollView.setPadding(dip2px(margin), 0, 0, 0);
+        }
+    }
 
     public void handleLoadPackage(final LoadPackageParam lpparam) {
         if (lpparam.packageName.equals("com.netease.cloudmusic")) {
-            XposedHelpers.findAndHookMethod("com.netease.cloudmusic.activity.n", lpparam.classLoader, "findViews", new XC_MethodHook() {
+            XposedHelpers.findAndHookMethod("com.netease.cloudmusic.activity.n", lpparam.classLoader, "showMinPlayerBar", boolean.class, new XC_MethodHook() {
                 @Override
                 public void afterHookedMethod(MethodHookParam p) throws Throwable {
-                    //播放列表
-                    ImageView mOperationBtn = (ImageView) XposedHelpers.getObjectField(p.thisObject, "mOperationBtn");
-                    ((RelativeLayout.LayoutParams) mOperationBtn.getLayoutParams()).setMarginEnd(dip2px(MarginEnd));
+                    margin = getSharedPreferences().getInt("margin", 12);
 
+                    //播放列表
+                    mOperationBtn = (ImageView) XposedHelpers.getObjectField(p.thisObject, "mOperationBtn");
 
                     //播放/暂停按钮
-                    ImageView mPlayBtn = (ImageView) XposedHelpers.getObjectField(p.thisObject, "mPlayBtn");
-                    mPlayBtn.setX(mPlayBtn.getX() - dip2px(MarginEnd));
+                    mPlayBtn = (ImageView) XposedHelpers.getObjectField(p.thisObject, "mPlayBtn");
 
                     //底部播放条
                     ViewGroup mMiniPlayBarInfoLayout = (ViewGroup) XposedHelpers.getObjectField(p.thisObject, "mMiniPlayBarInfoLayout");
-                    // mMiniPlayBarInfoLayout.setPadding(0, 0, dip2px(MarginEnd), 0);
-                    ((RelativeLayout.LayoutParams) mMiniPlayBarInfoLayout.getLayoutParams()).setMarginEnd(dip2px(MarginEnd));
+
+                    if (mMiniPlayBarInfoLayout != null) {
+                        mAlbumView = (ImageView) XposedHelpers.getObjectField(mMiniPlayBarInfoLayout, "mAlbumView");
+                        mMusicNameView = (View) XposedHelpers.getObjectField(mMiniPlayBarInfoLayout, "mMusicNameView");
+                        mArtistNameView = (View) XposedHelpers.getObjectField(mMiniPlayBarInfoLayout, "mArtistNameView");
+
+                        mAlbumScrollView = (View) XposedHelpers.getObjectField(mMiniPlayBarInfoLayout, "mAlbumScrollView");
+                        mMusicNameScrollView = (View) XposedHelpers.getObjectField(mMiniPlayBarInfoLayout, "mMusicNameScrollView");
+                        mArtistNameScrollView = (View) XposedHelpers.getObjectField(mMiniPlayBarInfoLayout, "mArtistNameScrollView");
+                    }
+
+                    changeView();
                 }
             });
 
             XposedHelpers.findAndHookConstructor("com.netease.cloudmusic.ui.MiniPlayBarInfoLayout", lpparam.classLoader, Context.class, AttributeSet.class, new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    View mAlbumView = (View) XposedHelpers.getObjectField(param.thisObject, "mAlbumView");
-                    mAlbumView.setX(dip2px(MarginStart));
+                    margin = getSharedPreferences().getInt("margin", 12);
 
-                    View mMusicNameView = (View) XposedHelpers.getObjectField(param.thisObject, "mMusicNameView");
-                    mMusicNameView.setX(mMusicNameView.getX() + dip2px(MarginStart));
+                    mAlbumView = (ImageView) XposedHelpers.getObjectField(param.thisObject, "mAlbumView");
+                    mAlbumView.setX(dip2px(margin));
 
-                    View mArtistNameView = (View) XposedHelpers.getObjectField(param.thisObject, "mArtistNameView");
-                    mArtistNameView.setX(mArtistNameView.getX() + dip2px(MarginStart));
+                    mMusicNameView = (View) XposedHelpers.getObjectField(param.thisObject, "mMusicNameView");
+                    mMusicNameView.setPadding(dip2px(margin), 0, 0, 0);
+
+                    mArtistNameView = (View) XposedHelpers.getObjectField(param.thisObject, "mArtistNameView");
+                    mArtistNameView.setPadding(dip2px(margin), 0, 0, 0);
                 }
             });
-
-//            XposedHelpers.findAndHookMethod("com.netease.cloudmusic.ui.MiniPlayBarInfoLayout", lpparam.classLoader, "initScrollView", new XC_MethodHook() {
-//                @Override
-//                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-//                    View mAlbumScrollView = (View) XposedHelpers.getObjectField(param.thisObject, "mAlbumScrollView");
-//                    if (mAlbumScrollView != null)
-//                        mAlbumScrollView.setX(mAlbumScrollView.getX() + dip2px(MarginStart));
-//
-//                    View mMusicNameScrollView = (View) XposedHelpers.getObjectField(param.thisObject, "mMusicNameScrollView");
-//                    mMusicNameScrollView.setX(mMusicNameScrollView.getX() + dip2px(MarginStart));
-//
-//                    View mArtistNameScrollView = (View) XposedHelpers.getObjectField(param.thisObject, "mArtistNameScrollView");
-//                    mArtistNameScrollView.setX(mArtistNameScrollView.getX() + dip2px(MarginStart));
-//                }
-//            });
 
             XposedHelpers.findAndHookMethod("com.netease.cloudmusic.ui.MiniPlayBarInfoLayout", lpparam.classLoader, "applyScrollViewCurrentTheme", new XC_MethodHook() {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                    View mAlbumScrollView = (View) XposedHelpers.getObjectField(param.thisObject, "mAlbumScrollView");
-                    if (mAlbumScrollView != null)
-                        mAlbumScrollView.setX(mAlbumScrollView.getX() + dip2px(MarginStart));
+                    margin = getSharedPreferences().getInt("margin", 12);
 
-                    View mMusicNameScrollView = (View) XposedHelpers.getObjectField(param.thisObject, "mMusicNameScrollView");
-                    if (mMusicNameScrollView != null)
-                        mMusicNameScrollView.setX(mMusicNameScrollView.getX() + dip2px(MarginStart));
+                    mAlbumScrollView = (View) XposedHelpers.getObjectField(param.thisObject, "mAlbumScrollView");
+                    if (mAlbumScrollView != null) {
+                        mAlbumScrollView.setX(dip2px(margin));
+                    }
 
-                    View mArtistNameScrollView = (View) XposedHelpers.getObjectField(param.thisObject, "mArtistNameScrollView");
-                    if (mArtistNameScrollView != null)
-                        mArtistNameScrollView.setX(mArtistNameScrollView.getX() + dip2px(MarginStart));
+                    mMusicNameScrollView = (View) XposedHelpers.getObjectField(param.thisObject, "mMusicNameScrollView");
+                    if (mMusicNameScrollView != null) {
+                        mMusicNameScrollView.setPadding(dip2px(margin), 0, 0, 0);
+                    }
+
+                    mArtistNameScrollView = (View) XposedHelpers.getObjectField(param.thisObject, "mArtistNameScrollView");
+                    if (mArtistNameScrollView != null) {
+                        mArtistNameScrollView.setPadding(dip2px(margin), 0, 0, 0);
+                    }
+                }
+            });
+
+            XposedHelpers.findAndHookMethod("com.netease.cloudmusic.ui.MiniPlayBarInfoLayout", lpparam.classLoader, "onLongPress", MotionEvent.class, new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                    Context context = ((View) param.thisObject).getContext();
+                    RelativeLayout rl = new RelativeLayout(context);
+                    rl.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+                    final TextView textView = new TextView(context);
+                    textView.setText(String.valueOf(margin));
+                    textView.setId(R.id.textView);
+
+                    SeekBar seekBar = new SeekBar(context);
+                    seekBar.setMax(100);
+                    seekBar.setProgress(margin);
+
+                    seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                        @Override
+                        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                            margin = progress;
+                            textView.setText(String.valueOf(progress));
+                            getSharedPreferences().edit().putInt("margin", margin).commit();
+                            changeView();
+                        }
+
+                        @Override
+                        public void onStartTrackingTouch(SeekBar seekBar) {
+
+                        }
+
+                        @Override
+                        public void onStopTrackingTouch(SeekBar seekBar) {
+
+                        }
+                    });
+
+                    RelativeLayout.LayoutParams lp_tv = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+                    lp_tv.setMarginEnd(dip2px(12));
+                    lp_tv.addRule(RelativeLayout.CENTER_VERTICAL);
+                    lp_tv.addRule(RelativeLayout.ALIGN_PARENT_END);
+                    rl.addView(textView, lp_tv);
+
+                    RelativeLayout.LayoutParams lp_seekBar = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+                    lp_seekBar.setMargins(dip2px(12), dip2px(12), 0, dip2px(12));
+                    lp_seekBar.addRule(RelativeLayout.START_OF, R.id.textView);
+                    lp_seekBar.addRule(RelativeLayout.CENTER_VERTICAL);
+                    rl.addView(seekBar, lp_seekBar);
+
+                    Dialog dialog = new Dialog(context);
+                    dialog.setContentView(rl);
+                    dialog.show();
                 }
             });
         }
