@@ -1,5 +1,18 @@
 # CloudMusic-FilletScreen-Module
 
+
+
+### Project description
+This is an xposed module to optimize Netease cloud music app for some Android devices, which mainly corrects the problem of corner occlusion elements at the bottom
+
+### How to use
+Install and activate the module, and long press the playback bar at the bottom of Netease cloud music interface to adjust the position
+
+### Download address
+https://github.com/KYMirai/CloudMusic-FilletScreen-Module/releases
+
+
+
 ### 项目说明
 这是一个为部分安卓设备优化网易云音乐APP的Xposed模块,主要修正了底部圆角遮挡元素的问题.
 
