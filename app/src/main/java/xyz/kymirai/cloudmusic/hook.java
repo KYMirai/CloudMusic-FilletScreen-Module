@@ -208,18 +208,25 @@ public class hook implements IXposedHookLoadPackage {
         }
 
         XposedHelpers.findAndHookMethod("android.view.WindowInsets", lpparam.classLoader, "getDisplayCutout", XC_MethodReplacement.returnConstant(XposedHelpers.getStaticObjectField(DisplayCutout.class, "NO_CUTOUT")));
-        XposedHelpers.findAndHookMethod("com.android.internal.policy.DecorView", lpparam.classLoader, "onLayout", boolean.class, int.class, int.class, int.class, int.class, new XC_MethodHook() {
-            @Override
-            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                int left = (int) param.args[1];
-                XposedBridge.log("滚滚滚" + left);
-                left -= 20;
-            }
-
+//        XposedHelpers.findAndHookMethod("com.android.internal.policy.DecorView", lpparam.classLoader, "onLayout", boolean.class, int.class, int.class, int.class, int.class, new XC_MethodHook() {
+//            @Override
+//            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+//                int left = (int) param.args[1];
+//                XposedBridge.log("滚滚滚" + left);
+//                left -= 20;
+//            }
+//
+//            @Override
+//            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+//                super.afterHookedMethod(param);
+//                XposedBridge.log("滚滚滚" + param.args[1]);
+//            }
+//        });
+        XposedHelpers.findAndHookMethod("com.android.internal.policy.DecorView", lpparam.classLoader, "drawableChanged", new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                super.afterHookedMethod(param);
-                XposedBridge.log("滚滚滚" + param.args[1]);
+                View decorView = (View) param.thisObject;
+                decorView.setPadding(0, 0, 0, 0);
             }
         });
     }
