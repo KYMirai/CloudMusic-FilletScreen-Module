@@ -2,6 +2,7 @@ package xyz.kymirai.cloudmusic;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam;
@@ -9,8 +10,8 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.os.Bundle;
 import android.util.AttributeSet;
+import android.view.DisplayCutout;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
@@ -205,6 +206,22 @@ public class hook implements IXposedHookLoadPackage {
                 }
             });
         }
+
+        XposedHelpers.findAndHookMethod("android.view.WindowInsets", lpparam.classLoader, "getDisplayCutout", XC_MethodReplacement.returnConstant(XposedHelpers.getStaticObjectField(DisplayCutout.class, "NO_CUTOUT")));
+        XposedHelpers.findAndHookMethod("com.android.internal.policy.DecorView", lpparam.classLoader, "onLayout", boolean.class, int.class, int.class, int.class, int.class, new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                int left = (int) param.args[1];
+                XposedBridge.log("滚滚滚" + left);
+                left -= 20;
+            }
+
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                super.afterHookedMethod(param);
+                XposedBridge.log("滚滚滚" + param.args[1]);
+            }
+        });
     }
 
     private static int dip2px(float dpValue) {
