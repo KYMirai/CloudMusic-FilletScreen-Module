@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">网易云-圆角优化模块</string>
+    <string name="instruction"><![CDATA[长按底部播放栏，即可进行调整。\n（点击我隐藏/显示模块图标）]]></string>
 </resources>
