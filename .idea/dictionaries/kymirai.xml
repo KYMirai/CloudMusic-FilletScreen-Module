@@ -6,6 +6,9 @@
       <w>mirai</w>
       <w>netease</w>
       <w>xposed</w>
+      <w>xposeddescription</w>
+      <w>xposedminversion</w>
+      <w>xposedmodule</w>
     </words>
   </dictionary>
 </component>
