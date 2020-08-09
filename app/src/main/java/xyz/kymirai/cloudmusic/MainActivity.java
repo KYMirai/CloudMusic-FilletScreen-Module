@@ -24,6 +24,10 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        initView();
+    }
+
+    private void initView() {
         Switch hide = findViewById(R.id.hide);
         hide.setText(Html.fromHtml(getResources().getString(R.string.switch_hide)));
         hide.setOnClickListener(this::onClick);

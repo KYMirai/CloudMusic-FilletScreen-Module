@@ -5,5 +5,5 @@
     <string name="title_about">关于</string>
     <string name="switch_active">模块激活状态</string>
     <string name="switch_hide"><Data><![CDATA[隐藏/显示模块图标<br><font color="#888888">PS:长按底部播放栏，即可进行调整布局。</font>]]></Data></string>
-    <string name="text_about"><Data><![CDATA[作者：KYMirai\n酷安：http://www.coolapk.com/u/883229\n\n项目开源：https://github.com/KYMirai/CloudMusic-FilletScreen-Module]]></Data></string>
+    <string name="text_about"><Data><![CDATA[版本：2.0\n\n作者：KYMirai\n酷安：http://www.coolapk.com/u/883229\n\n项目开源：https://github.com/KYMirai/CloudMusic-FilletScreen-Module]]></Data></string>
 </resources>

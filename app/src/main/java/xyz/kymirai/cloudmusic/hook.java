@@ -19,17 +19,11 @@ import android.view.ViewGroup;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
-import java.lang.reflect.Method;
-import java.util.Set;
-
 import static de.robv.android.xposed.XposedHelpers.findAndHookConstructor;
 import static de.robv.android.xposed.XposedHelpers.findAndHookMethod;
 
-
 public class hook implements IXposedHookLoadPackage {
     private static SharedPreferences sharedPreferences;
-
-    private static Class<?> clazz;
 
     private static int margin = 12;
 
@@ -45,71 +39,45 @@ public class hook implements IXposedHookLoadPackage {
     private View mMusicNameScrollView;//歌名tv
     private View mArtistNameScrollView;//歌词tv
 
+    private interface Hooked {
+        void hooked(XC_MethodHook.MethodHookParam param);
+    }
 
-    private static class HookedMethod extends XC_MethodHook {
-        private interface After {
-            void afterHookedMethod(MethodHookParam param);
-        }
+    private static XC_MethodHook after(Hooked after) {
+        return new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                after.hooked(param);
+            }
+        };
+    }
 
-        private interface Before {
-            void afterHookedMethod(MethodHookParam param);
-        }
-
-        private static XC_MethodHook after(After after) {
-            return new XC_MethodHook() {
-                @Override
-                protected void afterHookedMethod(MethodHookParam param) {
-                    after.afterHookedMethod(param);
-                }
-            };
-        }
-
-        private static XC_MethodHook before(Before before) {
-            return new XC_MethodHook() {
-                @Override
-                protected void beforeHookedMethod(MethodHookParam param) {
-                    before.afterHookedMethod(param);
-                }
-            };
-        }
+    private static XC_MethodHook before(Hooked before) {
+        return new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                before.hooked(param);
+            }
+        };
     }
 
     private void changeView() {
-        if (mOperationBtn != null) {
-            ((RelativeLayout.LayoutParams) mOperationBtn.getLayoutParams()).setMarginEnd(dip2px(margin));
-        }
-        if (mPlayBtn != null) {
-            RelativeLayout.LayoutParams new_lp = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, dip2px(49));
-            new_lp.addRule(RelativeLayout.LEFT_OF, mOperationBtn.getId());
-            mPlayBtn.setLayoutParams(new_lp);
-        }
+        try {
+            ((RelativeLayout.LayoutParams) mOperationBtn.getLayoutParams()).rightMargin = dip2px(margin);
+            mOperationBtn.requestLayout();
 ////
-        if (mAlbumView != null) {
-            if (mAlbumView.getParent() != null) {
-                mAlbumView.setX(dip2px(margin));
-            } else {
-                mAlbumView.setX(mMusicNameView.getX() + dip2px(margin) - mAlbumView.getWidth());
-            }
-        }
-        if (mMusicNameView != null) {
+            mAlbumView.setX((mAlbumView.getParent() == null ? mMusicNameView.getX() - mAlbumView.getWidth() : 0) + dip2px(margin));
+
             mMusicNameView.setPadding(dip2px(margin), 0, 0, 0);
-        }
-        if (mArtistNameView != null) {
+
             mArtistNameView.setPadding(dip2px(margin), 0, 0, 0);
-        }
 ////
-        if (mAlbumScrollView != null) {
-            if (mAlbumScrollView.getParent() != null) {
-                mAlbumScrollView.setX(dip2px(margin));
-            } else {
-                mAlbumScrollView.setX(mMusicNameScrollView.getX() + dip2px(margin) - mAlbumScrollView.getWidth());
-            }
-        }
-        if (mMusicNameScrollView != null) {
+            mAlbumScrollView.setX((mAlbumScrollView.getParent() == null ? mMusicNameScrollView.getX() - mAlbumScrollView.getWidth() : 0) + dip2px(margin));
+
             mMusicNameScrollView.setPadding(dip2px(margin), 0, 0, 0);
-        }
-        if (mArtistNameScrollView != null) {
+
             mArtistNameScrollView.setPadding(dip2px(margin), 0, 0, 0);
+        } catch (Throwable ignored) {
         }
     }
 
@@ -119,80 +87,68 @@ public class hook implements IXposedHookLoadPackage {
                 hookCloudMusic(lPParam);
                 break;
             case "xyz.kymirai.cloudmusic":
-                hookSelf(lPParam);
+                findAndHookMethod("xyz.kymirai.cloudmusic.MainActivity", lPParam.classLoader, "isActive", XC_MethodReplacement.returnConstant(true));
                 break;
         }
     }
 
-    private void hookCloudMusic(final LoadPackageParam lPParam) {
-        findAndHookMethod("com.netease.nis.wrapper.MyApplication", lPParam.classLoader, "onCreate", HookedMethod.after(param -> {
-            if (getClazz(lPParam.classLoader) == null) return;
+    private void initView(Object object) {
+        if (object == null) return;
 
-            findAndHookMethod(clazz, "showMinPlayerBar", boolean.class, HookedMethod.after(param1 -> {
-                margin = getSharedPreferences().getInt("margin", 12);
+        mAlbumView = (ImageView) XposedHelpers.getObjectField(object, "mAlbumView");
+        mMusicNameView = (View) XposedHelpers.getObjectField(object, "mMusicNameView");
+        mArtistNameView = (View) XposedHelpers.getObjectField(object, "mArtistNameView");
 
-                //播放列表
-                mOperationBtn = (ImageView) XposedHelpers.getObjectField(param1.thisObject, "mOperationBtn");
-
-                //播放/暂停按钮
-                mPlayBtn = (ImageView) XposedHelpers.getObjectField(param1.thisObject, "mPlayBtn");
-
-                //底部播放条
-                ViewGroup mMiniPlayBarInfoLayout = (ViewGroup) XposedHelpers.getObjectField(param1.thisObject, "mMiniPlayBarInfoLayout");
-
-                if (mMiniPlayBarInfoLayout != null) {
-                    mAlbumView = (ImageView) XposedHelpers.getObjectField(mMiniPlayBarInfoLayout, "mAlbumView");
-                    mMusicNameView = (View) XposedHelpers.getObjectField(mMiniPlayBarInfoLayout, "mMusicNameView");
-                    mArtistNameView = (View) XposedHelpers.getObjectField(mMiniPlayBarInfoLayout, "mArtistNameView");
-
-                    mAlbumScrollView = (View) XposedHelpers.getObjectField(mMiniPlayBarInfoLayout, "mAlbumScrollView");
-                    mMusicNameScrollView = (View) XposedHelpers.getObjectField(mMiniPlayBarInfoLayout, "mMusicNameScrollView");
-                    mArtistNameScrollView = (View) XposedHelpers.getObjectField(mMiniPlayBarInfoLayout, "mArtistNameScrollView");
-                }
-
-                changeView();
-            }));
-
-            findAndHookConstructor("com.netease.cloudmusic.ui.MiniPlayBarInfoLayout", lPParam.classLoader, Context.class, AttributeSet.class, HookedMethod.after(param1 -> {
-                mAlbumView = (ImageView) XposedHelpers.getObjectField(param1.thisObject, "mAlbumView");
-                mMusicNameView = (View) XposedHelpers.getObjectField(param1.thisObject, "mMusicNameView");
-                mArtistNameView = (View) XposedHelpers.getObjectField(param1.thisObject, "mArtistNameView");
-
-                mAlbumScrollView = (View) XposedHelpers.getObjectField(param1.thisObject, "mAlbumScrollView");
-                mMusicNameScrollView = (View) XposedHelpers.getObjectField(param1.thisObject, "mMusicNameScrollView");
-                mArtistNameScrollView = (View) XposedHelpers.getObjectField(param1.thisObject, "mArtistNameScrollView");
-                changeView();
-            }));
-
-            findAndHookMethod("com.netease.cloudmusic.ui.MiniPlayBarInfoLayout", lPParam.classLoader, "applyScrollViewCurrentTheme", HookedMethod.before(param1 -> {
-                margin = getSharedPreferences().getInt("margin", 12);
-
-                mAlbumScrollView = (View) XposedHelpers.getObjectField(param1.thisObject, "mAlbumScrollView");
-                if (mAlbumScrollView != null) {
-                    mAlbumScrollView.setX(dip2px(margin));
-                }
-
-                mMusicNameScrollView = (View) XposedHelpers.getObjectField(param1.thisObject, "mMusicNameScrollView");
-                if (mMusicNameScrollView != null) {
-                    mMusicNameScrollView.setPadding(dip2px(margin), 0, 0, 0);
-                }
-
-                mArtistNameScrollView = (View) XposedHelpers.getObjectField(param1.thisObject, "mArtistNameScrollView");
-                if (mArtistNameScrollView != null) {
-                    mArtistNameScrollView.setPadding(dip2px(margin), 0, 0, 0);
-                }
-            }));
-
-            //底部播放栏长按事件
-            findAndHookMethod("com.netease.cloudmusic.ui.MiniPlayBarInfoLayout", lPParam.classLoader, "onLongPress", MotionEvent.class, HookedMethod.after(param1 -> {
-                Context context = ((View) param1.thisObject).getContext();
-                showController(context);
-            }));
-        }));
+        initScrollView(object);
     }
 
-    private static void hookSelf(final LoadPackageParam lPParam) {
-        findAndHookMethod("xyz.kymirai.cloudmusic.MainActivity", lPParam.classLoader, "isActive", XC_MethodReplacement.returnConstant(true));
+    private void initScrollView(Object object) {
+        if (object == null) return;
+
+        mAlbumScrollView = (View) XposedHelpers.getObjectField(object, "mAlbumScrollView");
+        mMusicNameScrollView = (View) XposedHelpers.getObjectField(object, "mMusicNameScrollView");
+        mArtistNameScrollView = (View) XposedHelpers.getObjectField(object, "mArtistNameScrollView");
+
+        changeView();
+    }
+
+    private void hookCloudMusic(final LoadPackageParam lPParam) {
+        Class<?> SuperClazz = XposedHelpers.findClass("com.netease.cloudmusic.activity.MainActivity", lPParam.classLoader).getSuperclass().getSuperclass();
+        findAndHookMethod(SuperClazz, "showMinPlayerBar", boolean.class, after(param -> {
+            margin = getSharedPreferences().getInt("margin", 12);
+
+            //播放列表
+            mOperationBtn = (ImageView) XposedHelpers.getObjectField(param.thisObject, "mOperationBtn");
+            RelativeLayout.LayoutParams mOperationBtnLayoutParams = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.MATCH_PARENT);
+            mOperationBtnLayoutParams.addRule(RelativeLayout.ALIGN_PARENT_END, RelativeLayout.TRUE);
+            mOperationBtn.setLayoutParams(mOperationBtnLayoutParams);
+
+            //播放/暂停按钮
+            mPlayBtn = (ImageView) XposedHelpers.getObjectField(param.thisObject, "mPlayBtn");
+            RelativeLayout.LayoutParams mPlayBtnLayoutParams = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.MATCH_PARENT);
+            mPlayBtnLayoutParams.addRule(RelativeLayout.LEFT_OF, mOperationBtn.getId());
+            mPlayBtn.setLayoutParams(mPlayBtnLayoutParams);
+
+            //底部播放条
+            //ViewGroup mMiniPlayBarInfoLayout = (ViewGroup) XposedHelpers.getObjectField(param.thisObject, "mMiniPlayBarInfoLayout");
+
+            initView(XposedHelpers.getObjectField(param.thisObject, "mMiniPlayBarInfoLayout"));
+        }));
+
+        findAndHookMethod(SuperClazz, "changMiniPlayerBar", boolean.class, int.class, after(param -> {
+            ((RelativeLayout.LayoutParams) mPlayBtn.getLayoutParams()).rightMargin = 0;
+            mPlayBtn.requestLayout();
+        }));
+
+        findAndHookConstructor("com.netease.cloudmusic.ui.MiniPlayBarInfoLayout", lPParam.classLoader,
+                Context.class, AttributeSet.class, after(param -> initView(param.thisObject)));
+
+        findAndHookMethod("com.netease.cloudmusic.ui.MiniPlayBarInfoLayout", lPParam.classLoader,
+                "applyScrollViewCurrentTheme", before(param -> initScrollView(param.thisObject)));
+
+        //底部播放栏长按事件
+        findAndHookMethod("com.netease.cloudmusic.ui.MiniPlayBarInfoLayout", lPParam.classLoader,
+                "onLongPress", MotionEvent.class, after(param -> showController(((View) param.thisObject).getContext())));
     }
 
     private void showController(Context context) {
@@ -258,16 +214,5 @@ public class hook implements IXposedHookLoadPackage {
             }
         }
         return sharedPreferences;
-    }
-
-    private static Class<?> getClazz(ClassLoader loader) {
-        if (clazz == null) {
-            Set<String> classes = ClassUtils.getClassName(loader, "com.netease.cloudmusic.activity", false);
-            for (String clazzName : classes) {
-                Method method = XposedHelpers.findMethodExactIfExists(clazzName, loader, "showMinPlayerBar", boolean.class);
-                if (method != null) clazz = method.getDeclaringClass();
-            }
-        }
-        return clazz;
     }
 }
