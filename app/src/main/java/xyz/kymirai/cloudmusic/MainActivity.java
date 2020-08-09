@@ -31,9 +31,7 @@ public class MainActivity extends Activity {
 
         Switch active = findViewById(R.id.active);
         active.setChecked(isActive());
-        active.setOnCheckedChangeListener((v, b) -> {
-            v.setChecked(isActive());
-        });
+        active.setOnCheckedChangeListener((v, b) -> v.setChecked(isActive()));
     }
 
     public void onClick(View v) {
